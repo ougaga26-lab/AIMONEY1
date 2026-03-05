@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AI 黛尼營運成本估算器 2.0</title>
+  <style>
+    :root {
+      --bg: #07070f;
+      --accent: #4fc3f7;
+      --glass: rgba(255, 255, 255, 0.05);
+      --border: rgba(79, 195, 247, 0.3);
+    }
+    body {
+      background: var(--bg);
+      color: #fff;
+      font-family: -apple-system, 'Noto Sans TC', sans-serif;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 40px 20px;
+    }
+    h1 {
+      font-size: 24px;
+      letter-spacing: 2px;
+      margin-bottom: 30px;
+      background: linear-gradient(90deg, #fff, var(--accent));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    
+    .model-selector {
+      margin-bottom: 40px;
+      background: var(--glass);
+      padding: 20px;
+      border-radius: 15px;
+      border: 1px solid var(--border);
+      text-align: center;
+    }
+    select {
+      background: #1a1a2e;
+      color: var(--accent);
+      border: 1px solid var(--accent);
+      padding: 10px 20px;
+      border-radius: 8px;
+      font-size: 16px;
+      outline: none;
+      cursor: pointer;
+    }
+
+    .battery-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 15px;
+      width: 100%;
+      max-width: 1300px;
+    }
+
+    .battery {
+      background: var(--glass);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 20px;
+      position: relative;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+    }
+    .battery::after {
+      content: '';
+      position: absolute;
+      top: -8px; left: 50%; transform: translateX(-50%);
+      width: 30px; height: 8px; background: var(--border);
+      border-radius: 4px 4px 0 0;
+    }
+
+    .main-label { font-size: 16px; font-weight: bold; display: block; margin-bottom: 4px; }
+    .sub-label { font-size: 11px; color: rgba(255,255,255,0.5); display: block; margin-bottom: 12px; min-height: 32px; line-height: 1.3;}
+    
+    input {
+      width: 100%;
+      background: rgba(0,0,0,0.3);
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 8px;
+      padding: 10px;
+      color: var(--accent);
+      font-size: 18px;
+      font-weight: bold;
+      outline: none;
+    }
+
+    /* 計費標準直接顯示 */
+    .pricing-note {
+      margin-top: 15px;
+      font-size: 10px;
+      color: rgba(79, 195, 247, 0.4);
+      line-height: 1.5;
+      padding-top: 10px;
+      border-top: 1px solid rgba(255,255,255,0.05);
+    }
+
+    .result-panel {
+      margin-top: 40px;
+      width: 100%;
+      max-width: 700px;
+      background: linear-gradient(135deg, rgba(79,195,247,0.15), rgba(138, 43, 226, 0.15));
+      border: 1px solid var(--accent);
+      border-radius: 24px;
+      padding: 30px;
+      text-align: center;
+    }
+    .cost-row { display: flex; justify-content: space-around; margin-top: 20px; }
+    .cost-val { font-size: 36px; font-weight: bold; color: var(--accent); display: block; }
+    .cost-unit { font-size: 12px; color: rgba(255,255,255,0.4); text-transform: uppercase; }
+  </style>
+</head>
+<body>
+
+  <h1>AI 黛尼營運成本估算器</h1>
+
+  <div class="model-selector">
+    <label style="margin-right: 15px; font-size: 14px;">選用模型引擎：</label>
+    <select id="modelConfig" onchange="calc()">
+      <option value="flash25" selected>Gemini 2.5 Flash (最新/預設)</option>
+      <option value="flash15">Gemini 1.5 Flash (穩定版)</option>
+      <option value="pro20">Gemini 2.0 Pro (昂貴旗艦版)</option>
+    </select>
+  </div>
+
+  <div class="battery-grid">
+    <div class="battery">
+      <div>
+        <span class="main-label">預估使用者量</span>
+        <span class="sub-label">每天大約多少人點開網頁？</span>
+        <input type="number" id="dau" value="100" oninput="calc()">
+      </div>
+      <div class="pricing-note">Note: 基於每日獨立訪客數計算 API 總調用量。</div>
+    </div>
+
+    <div class="battery">
+      <div>
+        <span class="main-label">平均觀看展品數</span>
+        <span class="sub-label">每人平均滑過的作品數量？</span>
+        <input type="number" id="views" value="10" oninput="calc()">
+      </div>
+      <div class="pricing-note">Note: 只要滑到即觸發一次背景預載（前 3 個問題）。</div>
+    </div>
+
+    <div class="battery">
+      <div>
+        <span class="main-label">平均點擊 AI 比例</span>
+        <span class="sub-label">有多少 % 的人會點開 AI 球體？</span>
+        <input type="number" id="clickRate" value="50" oninput="calc()">
+      </div>
+      <div class="pricing-note">Note: 此行為會觸發剩下的 7 個問題產生費用。</div>
+    </div>
+
+    <div class="battery">
+      <div>
+        <span class="main-label">AI 平均提問數</span>
+        <span class="sub-label">點開後平均會點幾個問題？</span>
+        <input type="number" id="asks" value="2" oninput="calc()">
+      </div>
+      <div class="pricing-note">Note: 每次點擊觸發一次詳盡回答成本。</div>
+    </div>
+
+    <div class="battery">
+      <div>
+        <span class="main-label">展品描述字數</span>
+        <span class="sub-label">CSV 裡的描述平均多長？</span>
+        <input type="number" id="chars" value="400" oninput="calc()">
+      </div>
+      <div class="pricing-note">Note: 描述字數決定 Input Token 成本。</div>
+    </div>
+  </div>
+
+  <div class="result-panel">
+    <div class="cost-unit" style="margin-bottom: 10px; color: var(--accent);">ESTIMATED COST (TWD)</div>
+    <div class="cost-row">
+      <div class="cost-box">
+        <span class="cost-unit">預估月費</span>
+        <span class="cost-val" id="monthly">0</span>
+      </div>
+      <div class="cost-box" style="border-left: 1px solid rgba(255,255,255,0.1);">
+        <span class="cost-unit">預估年費</span>
+        <span class="cost-val" id="yearly">0</span>
+      </div>
+    </div>
+    <div class="pricing-note" style="margin-top: 20px; font-size: 11px; color: rgba(255,255,255,0.25);">
+      * 計算包含 Input/Output Token 權衡與當前台幣匯率估算。
+    </div>
+  </div>
+
+  <script>
+    const models = {
+      "flash25": { input: 0.1, output: 0.4 }, // Gemini 2.x Flash 價格區間
+      "flash15": { input: 0.075, output: 0.3 },
+      "pro20": { input: 1.25, output: 5.0 }
+    };
+
+    function calc() {
+      const dau = parseFloat(document.getElementById('dau').value) || 0;
+      const views = parseFloat(document.getElementById('views').value) || 0;
+      const clickRate = (parseFloat(document.getElementById('clickRate').value) || 0) / 100;
+      const asks = parseFloat(document.getElementById('asks').value) || 0;
+      const chars = parseFloat(document.getElementById('chars').value) || 0;
+      
+      const config = models[document.getElementById('modelConfig').value];
+      const usdToTwd = 32;
+      const tokenRatio = 1.5; 
+
+      // 1. 基本 3 題成本 (固定支出)
+      const in3 = (chars + 100) * tokenRatio;
+      const out3 = 60 * tokenRatio;
+      const cost3 = (in3 * config.input / 1000000) + (out3 * config.output / 1000000);
+
+      // 2. 剩餘 7 題成本 (只有點擊才花)
+      const in7 = (chars + 150) * tokenRatio;
+      const out7 = 140 * tokenRatio;
+      const cost7 = (in7 * config.input / 1000000) + (out7 * config.output / 1000000);
+
+      // 3. 單次詳細回答成本 (只有提問才花)
+      const inAns = (chars + 200) * tokenRatio;
+      const outAns = 300 * tokenRatio;
+      const costAns = (inAns * config.input / 1000000) + (outAns * config.output / 1000000);
+
+      // 總計算邏輯
+      const dailyBase = dau * views * cost3;
+      const dailyVariable = dau * views * clickRate * (cost7 + (asks * costAns));
+      
+      const dailyTwd = (dailyBase + dailyVariable) * usdToTwd;
+      
+      const monthly = dailyTwd * 30;
+      const yearly = monthly * 12;
+
+      document.getElementById('monthly').textContent = monthly.toLocaleString(undefined, {maximumFractionDigits: 0});
+      document.getElementById('yearly').textContent = yearly.toLocaleString(undefined, {maximumFractionDigits: 0});
+    }
+    calc();
+  </script>
+</body>
+</html>
